@@ -6,8 +6,9 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import { LiveTokenGrid } from "@/components/live-token-grid"
 import { PortfolioDock } from "@/components/portfolio-dock"
 import { BuyModal } from "@/components/buy-modal"
-import { usePumpPortalWebSocket } from "@/hooks/use-pump-portal-websocket"
+import { useStablePumpSocket } from "@/hooks/use-stable-pump-socket"
 import { CommandSidebar } from "@/components/command-sidebar"
+import { ConnectionDebugger } from "@/components/connection-debugger"
 import { useBotBrain } from "@/hooks/use-bot-brain"
 import { usePumpStore } from "@/lib/store"
 import { Zap, Activity, ToggleLeft, ToggleRight } from "lucide-react"
@@ -15,7 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import type { EnrichedToken } from "@/lib/types"
 
 export default function Home() {
-  usePumpPortalWebSocket()
+  const { forceReconnect } = useStablePumpSocket()
   useBotBrain()
 
   const { connected } = useWallet()
@@ -89,7 +90,7 @@ export default function Home() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <CommandSidebar />
+        <CommandSidebar onReconnect={forceReconnect} />
 
         <main className="flex-1 overflow-auto p-4 pb-52">
           <div className="mb-4 flex items-center justify-between">
@@ -101,6 +102,8 @@ export default function Home() {
       </div>
 
       <PortfolioDock />
+
+      <ConnectionDebugger onForceReconnect={forceReconnect} />
 
       <BuyModal
         token={selectedToken}

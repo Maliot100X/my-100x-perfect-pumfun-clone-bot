@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { EnrichedToken, Position, BotConfigs, TradeData } from "@/lib/types"
+import type { EnrichedToken, Position, BotConfigs, TradeData, ManualSettings } from "@/lib/types"
 
 interface PumpStore {
   // Mode state
@@ -7,6 +7,7 @@ interface PumpStore {
   simBalance: number
 
   botConfigs: BotConfigs
+  manualSettings: ManualSettings
 
   // Positions and tokens
   openPositions: Position[]
@@ -20,6 +21,8 @@ interface PumpStore {
   // WebSocket state
   isConnected: boolean
   error: string | null
+  packetsReceived: number
+  latency: number
 
   trailingStops: Map<string, number>
   tradeVelocity: Map<string, number[]>
@@ -29,6 +32,7 @@ interface PumpStore {
   toggleLiveMode: () => void
   toggleBot: (bot: keyof BotConfigs) => void
   updateBotConfig: <K extends keyof BotConfigs>(key: K, value: Partial<BotConfigs[K]>) => void
+  updateManualSettings: (settings: Partial<ManualSettings>) => void
   simulateBuy: (token: EnrichedToken, solAmount: number, source?: string) => boolean
   sellPosition: (positionId: string, sellPercent: number, reason?: string) => void
   updatePositionPrice: (mint: string, newPrice: number) => void
@@ -42,46 +46,59 @@ interface PumpStore {
   addTradeToVelocity: (mint: string) => void
   addToVolume: (mint: string, solAmount: number) => void
   getTradeVelocity: (mint: string) => number
+  incrementPackets: () => void
+  setLatency: (ms: number) => void
 }
 
 const DEFAULT_BOT_CONFIGS: BotConfigs = {
   godMode: {
     enabled: false,
-    riskLevel: "med",
+    minVelocity: 2,
+    minVolume: 5,
   },
   liquiditySniper: {
     enabled: false,
     blockDelay: 0,
-    maxJitoTip: 0.01,
+    tipSol: 0.01,
+    snipeAmount: 0.5,
   },
   copyTrader: {
     enabled: false,
     targetWallet: "",
-    copyAmount: 0.5,
+    copyPercent: 100,
   },
   rugShield: {
-    enabled: true,
-    emergencyForceSell: false,
+    enabled: false,
+    timeLimit: 5,
+    minHolders: 20,
   },
   mempoolWatcher: {
     enabled: false,
-    minWhaleSize: 10,
+    whaleThreshold: 50,
   },
   graduationBot: {
     enabled: false,
-    sellOnMigration: true,
+    entryProgress: 90,
+    exitProgress: 99,
   },
   scalpBot: {
     enabled: false,
-    takeProfitPercent: 10,
-    stopLossPercent: 5,
+    takeProfit: 15,
+    stopLoss: 10,
   },
+}
+
+const DEFAULT_MANUAL_SETTINGS: ManualSettings = {
+  quickBuyPresets: [0.1, 0.5, 1.0],
+  globalSlippage: 1,
+  priorityFee: 0.005,
 }
 
 export const usePumpStore = create<PumpStore>((set, get) => ({
   isLiveMode: false,
   simBalance: 100,
   botConfigs: DEFAULT_BOT_CONFIGS,
+  manualSettings: DEFAULT_MANUAL_SETTINGS,
   openPositions: [],
   tokens: [],
   latestToken: null,
@@ -89,6 +106,8 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
   logs: [],
   isConnected: false,
   error: null,
+  packetsReceived: 0,
+  latency: 0,
   trailingStops: new Map(),
   tradeVelocity: new Map(),
   tokenVolumes: new Map(),
@@ -142,6 +161,11 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
   updateBotConfig: (key, value) =>
     set((state) => ({
       botConfigs: { ...state.botConfigs, [key]: { ...state.botConfigs[key], ...value } },
+    })),
+
+  updateManualSettings: (settings) =>
+    set((state) => ({
+      manualSettings: { ...state.manualSettings, ...settings },
     })),
 
   simulateBuy: (token, solAmount, source = "MANUAL") => {
@@ -287,7 +311,6 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
       const newMap = new Map(state.tradeVelocity)
       const now = Date.now()
       const trades = newMap.get(mint) || []
-      // Keep trades from last 1 second
       const recentTrades = trades.filter((t) => now - t < 1000)
       recentTrades.push(now)
       newMap.set(mint, recentTrades)
@@ -307,4 +330,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
     const now = Date.now()
     return trades.filter((t) => now - t < 1000).length
   },
+
+  incrementPackets: () => set((state) => ({ packetsReceived: state.packetsReceived + 1 })),
+  setLatency: (ms) => set({ latency: ms }),
 }))

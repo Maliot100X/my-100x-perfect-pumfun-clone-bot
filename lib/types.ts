@@ -54,42 +54,45 @@ export interface Position {
 export interface BotConfigs {
   godMode: {
     enabled: boolean
-    riskLevel: "low" | "med" | "high"
-    // Triggers: Tx Velocity > 2/sec AND Volume > 5 SOL AND Top 10 Holders < 15%
+    minVelocity: number // Tx/s (default: 2)
+    minVolume: number // SOL (default: 5)
   }
   liquiditySniper: {
     enabled: boolean
-    blockDelay: number // 0-3
-    maxJitoTip: number // SOL
-    // Triggers: Token Age < 2000ms
+    blockDelay: number // 0-3 (default: 0)
+    tipSol: number // SOL (default: 0.01)
+    snipeAmount: number // SOL (default: 0.5)
   }
   copyTrader: {
     enabled: boolean
     targetWallet: string
-    copyAmount: number // SOL
-    // Mirrors target wallet buys
+    copyPercent: number // % (default: 100)
   }
   rugShield: {
     enabled: boolean
-    emergencyForceSell: boolean
-    // Auto-SELL if mint authority not disabled in 5 mins OR liquidity < $1k
+    timeLimit: number // minutes (default: 5)
+    minHolders: number // (default: 20)
   }
   mempoolWatcher: {
     enabled: boolean
-    minWhaleSize: number // SOL (1-100)
-    // Front-runs large purchases
+    whaleThreshold: number // SOL (default: 50)
   }
   graduationBot: {
     enabled: boolean
-    sellOnMigration: boolean
-    // Buys when bondingCurveProgress > 90%
+    entryProgress: number // % (default: 90)
+    exitProgress: number // % (default: 99)
   }
   scalpBot: {
     enabled: boolean
-    takeProfitPercent: number // default 10
-    stopLossPercent: number // default -5
-    // Rapid entry and exit
+    takeProfit: number // % (default: 15)
+    stopLoss: number // % (default: 10)
   }
+}
+
+export interface ManualSettings {
+  quickBuyPresets: [number, number, number] // SOL amounts
+  globalSlippage: number // % (default: 1)
+  priorityFee: number // SOL (default: 0.005)
 }
 
 export interface WalletState {
