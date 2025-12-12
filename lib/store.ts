@@ -60,7 +60,7 @@ const DEFAULT_BOT_CONFIGS: BotConfigs = {
     enabled: false,
     blockDelay: 0,
     tipSol: 0.01,
-    snipeAmount: 0.5,
+    snipeAmount: 0.1, // Changed from 0.5 to 0.1
   },
   copyTrader: {
     enabled: false,
@@ -89,7 +89,7 @@ const DEFAULT_BOT_CONFIGS: BotConfigs = {
 }
 
 const DEFAULT_MANUAL_SETTINGS: ManualSettings = {
-  quickBuyPresets: [0.1, 0.5, 1.0],
+  quickBuyPresets: [0.1, 0.5, 1.0], // Default 0.1 SOL
   globalSlippage: 1,
   priorityFee: 0.005,
 }

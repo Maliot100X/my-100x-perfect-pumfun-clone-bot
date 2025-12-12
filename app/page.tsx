@@ -7,13 +7,14 @@ import { LiveTokenGrid } from "@/components/live-token-grid"
 import { PortfolioDock } from "@/components/portfolio-dock"
 import { BuyModal } from "@/components/buy-modal"
 import { useStablePumpSocket } from "@/hooks/use-stable-pump-socket"
-import { CommandSidebar } from "@/components/command-sidebar"
 import { ConnectionDebugger } from "@/components/connection-debugger"
 import { useBotBrain } from "@/hooks/use-bot-brain"
 import { usePumpStore } from "@/lib/store"
 import { Zap, Activity, ToggleLeft, ToggleRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import type { EnrichedToken } from "@/lib/types"
+import { GodModeSidebar } from "@/components/god-mode-sidebar"
+import { SetupGuide } from "@/components/setup-guide"
 
 export default function Home() {
   const { forceReconnect } = useStablePumpSocket()
@@ -52,7 +53,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Zap className="h-6 w-6 text-primary" />
               <span className="font-mono text-lg font-bold text-primary">
-                PUMP<span className="text-foreground">SNIPER</span>
+                GOD<span className="text-purple-400"> MODE</span>
               </span>
             </div>
             <Badge variant={isConnected ? "default" : "secondary"} className="font-mono text-xs">
@@ -62,6 +63,9 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Setup Guide Button */}
+            <SetupGuide />
+
             {/* Sim/Live Mode Toggle */}
             <button
               onClick={toggleLiveMode}
@@ -72,7 +76,7 @@ export default function Home() {
               }`}
             >
               {isLiveMode ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-              {isLiveMode ? "LIVE MAINNET" : "SIMULATOR"}
+              {isLiveMode ? "⚠️ LIVE TRADING" : "🧪 SIMULATOR"}
             </button>
 
             {/* Balance Display */}
@@ -83,19 +87,19 @@ export default function Home() {
               </span>
             </div>
 
-            {/* Wallet Multi Button */}
+            {/* Wallet Button */}
             <WalletMultiButton className="!bg-primary !text-primary-foreground !font-mono !text-xs !h-9 !px-4 !rounded-lg" />
           </div>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <CommandSidebar onReconnect={forceReconnect} />
+        <GodModeSidebar onReconnect={forceReconnect} />
 
         <main className="flex-1 overflow-auto p-4 pb-52">
           <div className="mb-4 flex items-center justify-between">
             <h1 className="font-mono text-xl font-bold text-foreground">Live Token Feed</h1>
-            <span className="font-mono text-sm text-muted-foreground">{tokens.length} tokens</span>
+            <span className="font-mono text-sm text-muted-foreground">{tokens.length} tokens streaming</span>
           </div>
           <LiveTokenGrid onBuyClick={handleBuyClick} />
         </main>
