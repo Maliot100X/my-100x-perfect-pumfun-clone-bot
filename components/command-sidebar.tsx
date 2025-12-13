@@ -413,18 +413,18 @@ export function CommandSidebar({ onReconnect }: CommandSidebarProps) {
                     <div className="grid grid-cols-3 gap-2">
                       {[0, 1, 2].map((idx) => (
                         <div key={idx}>
-                          <Label className="text-muted-foreground text-[10px]">Preset {idx + 1} (SOL)</Label>
+                          <Label className="text-muted-foreground text-[10px]">Preset {idx + 1}</Label>
                           <Input
                             type="number"
                             step={0.1}
                             min={0.01}
-                            value={manualSettings.quickBuyPresets[idx]}
+                            value={manualSettings.quickBuyPresets[idx] ?? 0.1}
                             onChange={(e) => {
-                              const newPresets = [...manualSettings.quickBuyPresets] as [number, number, number]
+                              const newPresets = [...manualSettings.quickBuyPresets]
                               newPresets[idx] = Number(e.target.value)
                               updateManualSettings({ quickBuyPresets: newPresets })
                             }}
-                            className="mt-1 h-8 font-mono text-xs"
+                            className="mt-1 h-7 font-mono text-xs"
                           />
                         </div>
                       ))}
@@ -433,40 +433,34 @@ export function CommandSidebar({ onReconnect }: CommandSidebarProps) {
 
                   {/* Global Slippage */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <Label className="font-mono text-sm font-bold text-primary">GLOBAL SLIPPAGE</Label>
-                      <span className="font-mono text-sm text-yellow-400">{manualSettings.globalSlippage}%</span>
+                      <span className="text-xs text-muted-foreground">{manualSettings.globalSlippage}%</span>
                     </div>
                     <Slider
-                      value={[manualSettings.globalSlippage]}
-                      onValueChange={([v]) => updateManualSettings({ globalSlippage: v })}
                       min={0.1}
                       max={10}
                       step={0.1}
+                      value={[manualSettings.globalSlippage ?? 1]}
+                      onValueChange={(val) => updateManualSettings({ globalSlippage: val[0] })}
+                      className="mt-2"
                     />
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
-                      <span>0.1%</span>
-                      <span>10%</span>
-                    </div>
                   </div>
 
                   {/* Priority Fee */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                       <Label className="font-mono text-sm font-bold text-primary">PRIORITY FEE</Label>
-                      <span className="font-mono text-sm text-cyan-400">{manualSettings.priorityFee} SOL</span>
+                      <span className="text-xs text-muted-foreground">{manualSettings.priorityFee.toFixed(5)} SOL</span>
                     </div>
                     <Slider
-                      value={[manualSettings.priorityFee]}
-                      onValueChange={([v]) => updateManualSettings({ priorityFee: v })}
                       min={0.0001}
                       max={0.1}
                       step={0.0001}
+                      value={[manualSettings.priorityFee ?? 0.005]}
+                      onValueChange={(val) => updateManualSettings({ priorityFee: val[0] })}
+                      className="mt-2"
                     />
-                    <div className="flex justify-between text-[10px] text-muted-foreground">
-                      <span>0.0001 SOL</span>
-                      <span>0.1 SOL</span>
-                    </div>
                   </div>
 
                   {/* Info Panel - Removed as it seems to be an artifact from previous code and not in updates */}

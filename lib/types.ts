@@ -91,8 +91,12 @@ export interface BotConfigs {
 
 export interface ManualSettings {
   quickBuyPresets: [number, number, number] // SOL amounts
-  globalSlippage: number // % (default: 1)
+  globalSlippage: number // % (default: 10)
   priorityFee: number // SOL (default: 0.005)
+  maxRisk: number // SOL (default: 1.0)
+  buyAmount: number // SOL (default: 0.1)
+  autoSellTakeProfit: number // % (default: 100)
+  autoSellStopLoss: number // % (default: 20)
 }
 
 export interface WalletState {
@@ -109,4 +113,15 @@ export interface TradeData {
   solAmount: number
   isBuy: boolean
   timestamp: number
+}
+
+export interface TrackedWallet {
+  id: string
+  address: string
+  tag: string
+  source: "AI" | "MANUAL"
+  winRate: number
+  pnl: number
+  status: "ACTIVE" | "PAUSED"
+  addedAt: number
 }

@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import type { EnrichedToken, Position, BotConfigs, TradeData, ManualSettings } from "@/lib/types"
+import type { EnrichedToken, Position, BotConfigs, TradeData, ManualSettings, TrackedWallet } from "@/lib/types"
 
 interface PumpStore {
   // Mode state
@@ -14,6 +14,9 @@ interface PumpStore {
   tokens: EnrichedToken[]
   latestToken: EnrichedToken | null
   latestTrade: TradeData | null
+
+  // Tracked wallets for Copy Trader
+  trackedWallets: TrackedWallet[]
 
   // Logs with structured format
   logs: Array<{ id: string; time: string; type: string; message: string }>
@@ -48,6 +51,9 @@ interface PumpStore {
   getTradeVelocity: (mint: string) => number
   incrementPackets: () => void
   setLatency: (ms: number) => void
+  addTrackedWallet: (wallet: Omit<TrackedWallet, "id" | "addedAt">) => void
+  removeTrackedWallet: (id: string) => void
+  toggleWalletStatus: (id: string) => void
 }
 
 const DEFAULT_BOT_CONFIGS: BotConfigs = {
@@ -90,8 +96,12 @@ const DEFAULT_BOT_CONFIGS: BotConfigs = {
 
 const DEFAULT_MANUAL_SETTINGS: ManualSettings = {
   quickBuyPresets: [0.1, 0.5, 1.0], // Default 0.1 SOL
-  globalSlippage: 1,
+  globalSlippage: 10, // Changed from 1 to 10%
   priorityFee: 0.005,
+  maxRisk: 1.0, // New field: max risk per trade
+  buyAmount: 0.1, // New field: default buy amount
+  autoSellTakeProfit: 100, // New field: +100% (2x)
+  autoSellStopLoss: 20, // New field: -20%
 }
 
 export const usePumpStore = create<PumpStore>((set, get) => ({
@@ -103,6 +113,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
   tokens: [],
   latestToken: null,
   latestTrade: null,
+  trackedWallets: [],
   logs: [],
   isConnected: false,
   error: null,
@@ -333,4 +344,46 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
 
   incrementPackets: () => set((state) => ({ packetsReceived: state.packetsReceived + 1 })),
   setLatency: (ms) => set({ latency: ms }),
+
+  addTrackedWallet: (wallet) =>
+    set((state) => ({
+      trackedWallets: [
+        ...state.trackedWallets,
+        {
+          ...wallet,
+          id: crypto.randomUUID(),
+          addedAt: Date.now(),
+        },
+      ],
+      logs: [
+        ...state.logs,
+        {
+          id: crypto.randomUUID(),
+          time: new Date().toLocaleTimeString(),
+          type: wallet.source === "AI" ? "AI" : "MANUAL",
+          message: `Added wallet ${wallet.address.slice(0, 4)}...${wallet.address.slice(-4)} (${wallet.tag})`,
+        },
+      ],
+    })),
+
+  removeTrackedWallet: (id) =>
+    set((state) => ({
+      trackedWallets: state.trackedWallets.filter((w) => w.id !== id),
+      logs: [
+        ...state.logs,
+        {
+          id: crypto.randomUUID(),
+          time: new Date().toLocaleTimeString(),
+          type: "SYSTEM",
+          message: `Removed tracked wallet`,
+        },
+      ],
+    })),
+
+  toggleWalletStatus: (id) =>
+    set((state) => ({
+      trackedWallets: state.trackedWallets.map((w) =>
+        w.id === id ? { ...w, status: w.status === "ACTIVE" ? "PAUSED" : "ACTIVE" } : w,
+      ),
+    })),
 }))

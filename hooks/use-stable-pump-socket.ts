@@ -6,8 +6,9 @@ import type { TokenData, EnrichedToken, TradeData } from "@/lib/types"
 
 const WEBSOCKET_URL = "wss://pumpportal.fun/api/data"
 const SOL_PRICE_USD = 175
-const RECONNECT_DELAY = 500 // Reduced reconnect delay from 5000ms to 500ms for faster recovery
+const RECONNECT_DELAY = 500
 const MAX_TOKENS = 50
+const BATCH_INTERVAL = 1000 // Update React state only once per second
 
 export function useStablePumpSocket() {
   const [status, setStatus] = useState<"initializing" | "connecting" | "online" | "offline">("initializing")
@@ -17,6 +18,10 @@ export function useStablePumpSocket() {
   const isConnecting = useRef(false)
   const retryCountRef = useRef(0)
   const isMountedRef = useRef(true)
+
+  const tokenBufferRef = useRef<EnrichedToken[]>([])
+  const tradeBufferRef = useRef<TradeData[]>([])
+  const batchIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const {
     addToken,
@@ -31,6 +36,22 @@ export function useStablePumpSocket() {
     setLatency,
   } = usePumpStore()
 
+  const fetchTokenMetadata = useCallback(async (uri: string) => {
+    try {
+      const response = await fetch(uri)
+      if (!response.ok) return null
+      const metadata = await response.json()
+      return {
+        name: metadata.name || "Unknown",
+        symbol: metadata.symbol || "???",
+        image: metadata.image,
+        description: metadata.description,
+      }
+    } catch {
+      return null
+    }
+  }, [])
+
   const subscribeToTokenTrade = useCallback((mint: string) => {
     if (socketRef.current?.readyState === WebSocket.OPEN && !subscribedTokensRef.current.has(mint)) {
       socketRef.current.send(JSON.stringify({ method: "subscribeTokenTrade", keys: [mint] }))
@@ -38,36 +59,74 @@ export function useStablePumpSocket() {
     }
   }, [])
 
-  const enrichToken = useCallback((token: TokenData): EnrichedToken => {
-    const marketCapUsd = token.marketCapSol * SOL_PRICE_USD
-    const totalSupply = 1_000_000_000
-    const tokensSold = totalSupply - token.vTokensInBondingCurve
-    const bondingCurveProgress = (tokensSold / totalSupply) * 100
+  const enrichToken = useCallback(
+    async (token: TokenData): Promise<EnrichedToken> => {
+      const marketCapUsd = token.marketCapSol * SOL_PRICE_USD
+      const totalSupply = 1_000_000_000
+      const tokensSold = totalSupply - token.vTokensInBondingCurve
+      const bondingCurveProgress = (tokensSold / totalSupply) * 100
 
-    return {
-      ...token,
-      metadata: undefined,
-      createdAt: Date.now(),
-      marketCapUsd,
-      bondingCurveProgress,
-      priceHistory: [token.marketCapSol],
-      volume24h: token.vSolInBondingCurve || 0,
-      tradeCount: 0,
-      topHolderPercent: Math.random() * 20,
+      let metadata = undefined
+      if (token.uri) {
+        metadata = await fetchTokenMetadata(token.uri)
+      }
+
+      return {
+        ...token,
+        name: metadata?.name || token.name || "Unknown Token",
+        symbol: metadata?.symbol || token.symbol || "???",
+        metadata,
+        createdAt: Date.now(),
+        marketCapUsd,
+        bondingCurveProgress,
+        priceHistory: [token.marketCapSol],
+        volume24h: token.vSolInBondingCurve || 0,
+        tradeCount: 0,
+        topHolderPercent: Math.random() * 20,
+      }
+    },
+    [fetchTokenMetadata],
+  )
+
+  const flushBatches = useCallback(() => {
+    if (!isMountedRef.current) return
+
+    // Flush token buffer
+    if (tokenBufferRef.current.length > 0) {
+      const tokensToAdd = [...tokenBufferRef.current]
+      tokenBufferRef.current = []
+      tokensToAdd.forEach((token) => addToken(token))
     }
-  }, [])
+
+    // Flush trade buffer
+    if (tradeBufferRef.current.length > 0) {
+      const tradesToProcess = [...tradeBufferRef.current]
+      tradeBufferRef.current = []
+      tradesToProcess.forEach((trade) => {
+        setLatestTrade(trade)
+        addTradeToVelocity(trade.mint)
+        if (trade.isBuy) addToVolume(trade.mint, trade.solAmount)
+
+        // Update position prices for open positions
+        const position = openPositions.find((p) => p.token.mint === trade.mint)
+        if (position) {
+          // Estimate new price based on trade
+          const newPrice = position.currentPrice * (trade.isBuy ? 1.01 : 0.99)
+          updatePositionPrice(trade.mint, newPrice)
+        }
+      })
+    }
+  }, [addToken, setLatestTrade, addTradeToVelocity, addToVolume, updatePositionPrice, openPositions])
 
   const connect = useCallback(() => {
     if (typeof window === "undefined") return
     if (!isMountedRef.current) return
 
     if (isConnecting.current) {
-      console.log("[v0] Already connecting, skipping...")
       return
     }
 
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-      console.log("[v0] Already connected, skipping...")
       return
     }
 
@@ -84,7 +143,6 @@ export function useStablePumpSocket() {
     setStatus("connecting")
     setConnectionStatus(false, "connecting")
     addLog("WS", `Connecting... (attempt ${retryCountRef.current + 1})`)
-    console.log("[v0] Attempting WebSocket connection...")
 
     try {
       const connectionStart = Date.now()
@@ -93,7 +151,6 @@ export function useStablePumpSocket() {
 
       const connectionTimeout = setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
-          console.log("[v0] Connection timeout, closing socket...")
           ws.close()
         }
       }, 10000)
@@ -109,10 +166,8 @@ export function useStablePumpSocket() {
         setStatus("online")
         setConnectionStatus(true, null)
         addLog("WS", `Connected | Latency: ${latency}ms`)
-        console.log("[v0] WebSocket connected successfully!")
 
         ws.send(JSON.stringify({ method: "subscribeNewToken" }))
-        console.log("[v0] Subscribed to new tokens")
 
         subscribedTokensRef.current.clear()
         openPositions.forEach((p) => {
@@ -121,17 +176,21 @@ export function useStablePumpSocket() {
             subscribedTokensRef.current.add(p.token.mint)
           }
         })
+
+        if (batchIntervalRef.current) clearInterval(batchIntervalRef.current)
+        batchIntervalRef.current = setInterval(flushBatches, BATCH_INTERVAL)
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = async (event) => {
         if (!isMountedRef.current) return
         incrementPackets()
+
         try {
           const data = JSON.parse(event.data)
 
-          if (data.txType === "create" || (data.mint && !data.txType)) {
-            const enrichedToken = enrichToken(data as TokenData)
-            addToken(enrichedToken)
+          if (data.txType === "create") {
+            const enrichedToken = await enrichToken(data as TokenData)
+            tokenBufferRef.current.push(enrichedToken)
           }
 
           if (data.txType === "buy" || data.txType === "sell") {
@@ -142,27 +201,26 @@ export function useStablePumpSocket() {
               isBuy: data.txType === "buy",
               timestamp: Date.now(),
             }
-            setLatestTrade(tradeData)
-            addTradeToVelocity(data.mint)
-            if (tradeData.isBuy) addToVolume(data.mint, tradeData.solAmount)
-            updatePositionPrice(data.mint, data.marketCapSol)
+            tradeBufferRef.current.push(tradeData)
           }
         } catch {
           // Ignore malformed messages
         }
       }
 
-      ws.onerror = (err) => {
+      ws.onerror = () => {
         clearTimeout(connectionTimeout)
-        console.error("[v0] WebSocket error occurred - this is often a CORS or network issue")
-        console.error("[v0] Error details:", JSON.stringify(err))
       }
 
       ws.onclose = (event) => {
         clearTimeout(connectionTimeout)
-        console.log("[v0] WebSocket closed, code:", event.code, "reason:", event.reason)
         isConnecting.current = false
         socketRef.current = null
+
+        if (batchIntervalRef.current) {
+          clearInterval(batchIntervalRef.current)
+          batchIntervalRef.current = null
+        }
 
         if (!isMountedRef.current) return
 
@@ -172,7 +230,6 @@ export function useStablePumpSocket() {
 
         const delay = Math.min(RECONNECT_DELAY * Math.pow(1.5, retryCountRef.current - 1), 30000)
         addLog("WS", `Reconnecting in ${Math.round(delay / 1000)}s...`)
-        console.log("[v0] Will reconnect in", delay, "ms")
 
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current)
@@ -182,7 +239,6 @@ export function useStablePumpSocket() {
         }, delay)
       }
     } catch (error) {
-      console.error("[v0] Failed to create WebSocket:", error)
       isConnecting.current = false
       setStatus("offline")
       setConnectionStatus(false, "error")
@@ -207,13 +263,18 @@ export function useStablePumpSocket() {
     incrementPackets,
     setLatency,
     addToken,
+    flushBatches,
   ])
 
   const disconnect = useCallback(() => {
-    console.log("[v0] Disconnecting WebSocket...")
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
+    }
+
+    if (batchIntervalRef.current) {
+      clearInterval(batchIntervalRef.current)
+      batchIntervalRef.current = null
     }
 
     if (socketRef.current) {
@@ -230,7 +291,6 @@ export function useStablePumpSocket() {
 
   const forceReconnect = useCallback(() => {
     addLog("WS", "FORCE RECONNECT initiated...")
-    console.log("[v0] Force reconnect requested")
     retryCountRef.current = 0
     disconnect()
     setTimeout(() => {
@@ -242,11 +302,9 @@ export function useStablePumpSocket() {
     if (typeof window === "undefined") return
 
     isMountedRef.current = true
-    console.log("[v0] Hook mounted, starting connection...")
     connect()
 
     return () => {
-      console.log("[v0] Hook unmounting, cleaning up...")
       isMountedRef.current = false
       disconnect()
     }
