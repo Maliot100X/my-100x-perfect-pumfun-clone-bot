@@ -1,5 +1,13 @@
 import { create } from "zustand"
-import type { EnrichedToken, Position, BotConfigs, TradeData, ManualSettings, TrackedWallet } from "@/lib/types"
+import type {
+  EnrichedToken,
+  Position,
+  BotConfigs,
+  TradeData,
+  ManualSettings,
+  TrackedWallet,
+  AutoWithdrawalSettings,
+} from "@/lib/types"
 
 interface PumpStore {
   // Mode state
@@ -8,6 +16,7 @@ interface PumpStore {
 
   botConfigs: BotConfigs
   manualSettings: ManualSettings
+  autoWithdrawal: AutoWithdrawalSettings
 
   // Positions and tokens
   openPositions: Position[]
@@ -36,6 +45,7 @@ interface PumpStore {
   toggleBot: (bot: keyof BotConfigs) => void
   updateBotConfig: <K extends keyof BotConfigs>(key: K, value: Partial<BotConfigs[K]>) => void
   updateManualSettings: (settings: Partial<ManualSettings>) => void
+  updateAutoWithdrawal: (settings: Partial<AutoWithdrawalSettings>) => void
   simulateBuy: (token: EnrichedToken, solAmount: number, source?: string) => boolean
   sellPosition: (positionId: string, sellPercent: number, reason?: string) => void
   updatePositionPrice: (mint: string, newPrice: number) => void
@@ -104,11 +114,19 @@ const DEFAULT_MANUAL_SETTINGS: ManualSettings = {
   autoSellStopLoss: 20, // New field: -20%
 }
 
+const DEFAULT_AUTO_WITHDRAWAL: AutoWithdrawalSettings = {
+  enabled: false,
+  safeWallet: "",
+  triggerBalance: 2.0,
+  reserveAmount: 0.5,
+}
+
 export const usePumpStore = create<PumpStore>((set, get) => ({
   isLiveMode: false,
   simBalance: 100,
   botConfigs: DEFAULT_BOT_CONFIGS,
   manualSettings: DEFAULT_MANUAL_SETTINGS,
+  autoWithdrawal: DEFAULT_AUTO_WITHDRAWAL,
   openPositions: [],
   tokens: [],
   latestToken: null,
@@ -177,6 +195,11 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
   updateManualSettings: (settings) =>
     set((state) => ({
       manualSettings: { ...state.manualSettings, ...settings },
+    })),
+
+  updateAutoWithdrawal: (settings) =>
+    set((state) => ({
+      autoWithdrawal: { ...state.autoWithdrawal, ...settings },
     })),
 
   simulateBuy: (token, solAmount, source = "MANUAL") => {

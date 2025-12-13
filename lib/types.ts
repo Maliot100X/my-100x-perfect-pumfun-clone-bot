@@ -125,3 +125,10 @@ export interface TrackedWallet {
   status: "ACTIVE" | "PAUSED"
   addedAt: number
 }
+
+export interface AutoWithdrawalSettings {
+  enabled: boolean
+  safeWallet: string
+  triggerBalance: number // SOL
+  reserveAmount: number // SOL
+}

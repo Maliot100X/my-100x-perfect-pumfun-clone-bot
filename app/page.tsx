@@ -7,22 +7,32 @@ import { LiveTokenGrid } from "@/components/live-token-grid"
 import { PortfolioDock } from "@/components/portfolio-dock"
 import { BuyModal } from "@/components/buy-modal"
 import { useStablePumpSocket } from "@/hooks/use-stable-pump-socket"
-import { ConnectionDebugger } from "@/components/connection-debugger"
-import { useBotBrain } from "@/hooks/use-bot-brain"
-import { usePumpStore } from "@/lib/store"
-import { Zap, Activity, ToggleLeft, ToggleRight } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import type { EnrichedToken } from "@/lib/types"
 import { GodModeSidebar } from "@/components/god-mode-sidebar"
 import { SetupGuide } from "@/components/setup-guide"
+import { Badge } from "@/components/ui/badge"
+import type { EnrichedToken } from "@/lib/types"
+import { Zap, Activity, ToggleLeft, ToggleRight } from "lucide-react"
+import { useBotBrain } from "@/hooks/use-bot-brain" // Import useBotBrain
+import { usePumpStore } from "@/lib/store"
 
 export default function Home() {
   const { forceReconnect } = useStablePumpSocket()
   useBotBrain()
 
   const { connected } = useWallet()
-  const { tokens, isConnected, isLiveMode, toggleLiveMode, simBalance, simulateBuy, openPositions, logs } =
-    usePumpStore()
+  const {
+    tokens,
+    isConnected,
+    isLiveMode,
+    toggleLiveMode,
+    simBalance,
+    simulateBuy,
+    openPositions,
+    logs,
+    wsStatus,
+    latency,
+    packetsReceived,
+  } = usePumpStore()
 
   const [selectedToken, setSelectedToken] = useState<EnrichedToken | null>(null)
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false)
@@ -141,6 +151,37 @@ export default function Home() {
             >
               💼 My Wallet
             </button>
+
+            <div className="ml-auto flex items-center gap-3 px-4 py-1.5 rounded-full bg-secondary/50 border border-border font-mono text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+                <span className={isConnected ? "text-green-400" : "text-red-400"}>
+                  {isConnected ? "ONLINE" : "OFFLINE"}
+                </span>
+              </div>
+              {isConnected && (
+                <>
+                  <span className="text-muted-foreground">|</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground">📦</span>
+                    <span className="text-primary font-bold">{packetsReceived.toLocaleString()}</span>
+                  </div>
+                  <span className="text-muted-foreground">|</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground">📶</span>
+                    <span className="text-green-400 font-bold">{latency}ms</span>
+                  </div>
+                </>
+              )}
+              {!isConnected && (
+                <button
+                  onClick={forceReconnect}
+                  className="ml-2 px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] hover:bg-red-500/30"
+                >
+                  RECONNECT
+                </button>
+              )}
+            </div>
           </div>
 
           {mainTab === "feed" && (
@@ -275,8 +316,6 @@ export default function Home() {
       </div>
 
       <PortfolioDock />
-
-      <ConnectionDebugger onForceReconnect={forceReconnect} />
 
       <BuyModal
         token={selectedToken}
