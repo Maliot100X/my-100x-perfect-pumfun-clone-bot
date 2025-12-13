@@ -12,10 +12,11 @@ import type { EnrichedToken } from "@/lib/types"
 import { Skull, Activity, ToggleLeft, ToggleRight } from "lucide-react"
 import { useBotBrain } from "@/hooks/use-bot-brain"
 import { usePumpStore } from "@/lib/store"
+import { WalletButton } from "@/components/wallet-button"
 
 export default function Home() {
   const { forceReconnect } = useStablePumpSocket()
-  const connected = false
+  const { walletConnected } = usePumpStore() // Using wallet adapter for connected status
 
   const {
     tokens,
@@ -91,13 +92,11 @@ export default function Home() {
             <div className="font-mono text-lg">
               <span className="text-gray-400">Balance: </span>
               <span className="text-green-400 font-bold">
-                {isLiveMode ? (connected ? "..." : "0.00") : `${simBalance.toFixed(2)}`} SOL
+                {isLiveMode ? (walletConnected ? "..." : "0.00") : `${simBalance.toFixed(2)}`} SOL
               </span>
             </div>
 
-            <button className="bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 border border-purple-500/50 font-mono text-sm h-10 px-6 rounded-lg transition-all">
-              {connected ? "Wallet Connected" : "Connect Wallet"}
-            </button>
+            <WalletButton />
           </div>
         </div>
       </header>

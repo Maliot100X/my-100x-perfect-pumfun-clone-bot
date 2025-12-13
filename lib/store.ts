@@ -161,7 +161,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
         logs: [
           ...state.logs,
           {
-            id: crypto.randomUUID(),
+            id: Date.now().toString() + Math.random().toString().substring(2, 8),
             time: new Date().toLocaleTimeString(),
             type: "SYSTEM",
             message: `Mode: ${newMode ? "LIVE MAINNET" : "SIMULATOR"}`,
@@ -190,7 +190,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
         logs: [
           ...state.logs,
           {
-            id: crypto.randomUUID(),
+            id: Date.now().toString() + Math.random().toString().substring(2, 8),
             time: new Date().toLocaleTimeString(),
             type: "BOT",
             message: `${botNames[bot]} ${newState ? "ACTIVATED" : "DEACTIVATED"}`,
@@ -222,7 +222,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
         logs: [
           ...s.logs,
           {
-            id: crypto.randomUUID(),
+            id: Date.now().toString() + Math.random().toString().substring(2, 8),
             time: new Date().toLocaleTimeString(),
             type: "ERROR",
             message: `Insufficient balance for ${token.symbol}`,
@@ -252,7 +252,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
       logs: [
         ...state.logs,
         {
-          id: crypto.randomUUID(),
+          id: Date.now().toString() + Math.random().toString().substring(2, 8),
           time: new Date().toLocaleTimeString(),
           type: source,
           message: `BUY $${token.symbol} for ${solAmount} SOL`,
@@ -276,7 +276,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
         logs: [
           ...s.logs,
           {
-            id: crypto.randomUUID(),
+            id: Date.now().toString() + Math.random().toString().substring(2, 8),
             time: new Date().toLocaleTimeString(),
             type: "SELL",
             message: `${reason}: SOLD 100% $${position.token.symbol} → ${solReturned.toFixed(4)} SOL (${position.pnlPercent >= 0 ? "+" : ""}${position.pnlPercent.toFixed(1)}%)`,
@@ -298,7 +298,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
         logs: [
           ...s.logs,
           {
-            id: crypto.randomUUID(),
+            id: Date.now().toString() + Math.random().toString().substring(2, 8),
             time: new Date().toLocaleTimeString(),
             type: "SELL",
             message: `${reason}: SOLD ${sellPercent}% $${position.token.symbol} → ${solReturned.toFixed(4)} SOL`,
@@ -326,7 +326,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
       logs: [
         ...state.logs.slice(-99),
         {
-          id: crypto.randomUUID(),
+          id: Date.now().toString() + Math.random().toString().substring(2, 8),
           time: new Date().toLocaleTimeString(),
           type,
           message,
@@ -386,14 +386,14 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
         ...state.trackedWallets,
         {
           ...wallet,
-          id: crypto.randomUUID(),
+          id: Date.now().toString() + Math.random().toString().substring(2, 8),
           addedAt: Date.now(),
         },
       ],
       logs: [
         ...state.logs,
         {
-          id: crypto.randomUUID(),
+          id: Date.now().toString() + Math.random().toString().substring(2, 8),
           time: new Date().toLocaleTimeString(),
           type: wallet.source === "AI" ? "AI" : "MANUAL",
           message: `Added wallet ${wallet.address.slice(0, 4)}...${wallet.address.slice(-4)} (${wallet.tag})`,
@@ -407,7 +407,7 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
       logs: [
         ...state.logs,
         {
-          id: crypto.randomUUID(),
+          id: Date.now().toString() + Math.random().toString().substring(2, 8),
           time: new Date().toLocaleTimeString(),
           type: "SYSTEM",
           message: `Removed tracked wallet`,
