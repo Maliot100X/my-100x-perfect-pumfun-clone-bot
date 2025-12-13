@@ -88,6 +88,7 @@ export interface BotConfigs {
     stopLoss: number // % (default: 10)
   }
   sniper: SniperSettings
+  killerMode: KillerModeSettings
 }
 
 export interface SniperSettings {
@@ -100,6 +101,14 @@ export interface SniperSettings {
   stopLossPercent: number // e.g., 50
   autoSnipeActive: boolean
   aiRugDetectorActive: boolean
+}
+
+export interface KillerModeSettings {
+  buyAmountSol: number
+  jitoBribe: number
+  maxDevBuy: number
+  antiRug: boolean
+  aiRugDefense: boolean
 }
 
 export interface ActivePosition {
@@ -163,4 +172,14 @@ export interface LogEntry {
   timestamp: string
   message: string
   type: "INFO" | "SUCCESS" | "ERROR" | "DANGER"
+}
+
+export interface BackendStatus {
+  isRunning: boolean
+  network: "DEVNET" | "TESTNET" | "MAINNET"
+  mempoolActive: boolean
+  frontRunMode: boolean
+  openPositions: number
+  latency: number
+  rpcOnline: boolean
 }

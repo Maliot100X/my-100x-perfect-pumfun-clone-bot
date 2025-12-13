@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { LiveTokenGrid } from "@/components/live-token-grid"
 import { PortfolioDock } from "@/components/portfolio-dock"
 import { BuyModal } from "@/components/buy-modal"
@@ -9,14 +9,19 @@ import { GodModeSidebar } from "@/components/god-mode-sidebar"
 import { KillerMode } from "@/components/killer-mode"
 import { Badge } from "@/components/ui/badge"
 import type { EnrichedToken } from "@/lib/types"
-import { Skull, Activity, ToggleLeft, ToggleRight } from "lucide-react"
+import { Skull, Activity } from "lucide-react"
 import { useBotBrain } from "@/hooks/use-bot-brain"
 import { usePumpStore } from "@/lib/store"
 import { WalletButton } from "@/components/wallet-button"
+import { usePhantomWallet } from "@/hooks/usePhantomWallet"
+import { NetworkSelector } from "@/components/network-selector"
+import { AutomationControls } from "@/components/automation-controls"
+import { useBackendAPI } from "@/hooks/use-backend-api"
 
 export default function Home() {
   const { forceReconnect } = useStablePumpSocket()
-  const { walletConnected } = usePumpStore() // Using wallet adapter for connected status
+  const { connected: walletConnected, balance: walletBalance } = usePhantomWallet()
+  const { status: backendStatus } = useBackendAPI()
 
   const {
     tokens,
@@ -36,6 +41,10 @@ export default function Home() {
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false)
   const [mainTab, setMainTab] = useState<"dashboard" | "logs" | "killer">("dashboard")
 
+  useEffect(() => {
+    usePumpStore.setState({ walletConnected })
+  }, [walletConnected])
+
   const handleBuyClick = useCallback((token: EnrichedToken) => {
     setSelectedToken(token)
     setIsBuyModalOpen(true)
@@ -48,10 +57,14 @@ export default function Home() {
         simulateBuy(selectedToken, amount, "MANUAL")
         setIsBuyModalOpen(false)
       } else {
-        alert("Live trading requires wallet transaction signing")
+        if (!walletConnected) {
+          alert("Please connect your Phantom wallet first")
+          return
+        }
+        alert("Live trading requires wallet transaction signing - Integration ready!")
       }
     },
-    [selectedToken, isLiveMode, simulateBuy],
+    [selectedToken, isLiveMode, simulateBuy, walletConnected],
   )
 
   const handlePanicSell = () => {
@@ -76,28 +89,31 @@ export default function Home() {
             </span>
           </div>
 
-          <div className="flex items-center gap-6">
-            <button
-              onClick={toggleLiveMode}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-sm font-bold border-2 transition-all ${
-                isLiveMode
-                  ? "bg-red-500/20 text-red-400 border-red-500/50 animate-pulse"
-                  : "bg-green-500/20 text-green-400 border-green-500/50"
-              }`}
-            >
-              {isLiveMode ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
-              {isLiveMode ? "LIVE MAINNET" : "SIMULATOR MODE"}
-            </button>
+          <div className="flex items-center gap-4">
+            <NetworkSelector />
+
+            {backendStatus && (
+              <Badge variant={backendStatus.network === "MAINNET" ? "destructive" : "secondary"} className="font-mono">
+                {backendStatus.network === "MAINNET" && "LIVE MAINNET"}
+                {backendStatus.network === "TESTNET" && "TESTNET"}
+                {backendStatus.network === "DEVNET" && "DEVNET"}
+              </Badge>
+            )}
 
             <div className="font-mono text-lg">
               <span className="text-gray-400">Balance: </span>
               <span className="text-green-400 font-bold">
-                {isLiveMode ? (walletConnected ? "..." : "0.00") : `${simBalance.toFixed(2)}`} SOL
+                {isLiveMode ? (walletConnected ? `${walletBalance.toFixed(4)}` : "0.00") : `${simBalance.toFixed(2)}`}{" "}
+                SOL
               </span>
             </div>
 
             <WalletButton />
           </div>
+        </div>
+
+        <div className="border-t border-red-500/30 bg-black/50 px-6 py-3">
+          <AutomationControls />
         </div>
       </header>
 
@@ -141,13 +157,15 @@ export default function Home() {
             <div className="ml-auto flex items-center gap-3 px-4 py-2 rounded-full bg-black border border-green-500/30 font-mono text-xs">
               <div className="flex items-center gap-2">
                 <span
-                  className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    backendStatus?.rpcOnline ? "bg-green-500 animate-pulse" : "bg-red-500"
+                  }`}
                 />
-                <span className={isConnected ? "text-green-400" : "text-red-400"}>
-                  {isConnected ? "RPC ONLINE" : "OFFLINE"}
+                <span className={backendStatus?.rpcOnline ? "text-green-400" : "text-red-400"}>
+                  {backendStatus?.rpcOnline ? "RPC ONLINE" : "OFFLINE"}
                 </span>
               </div>
-              {isConnected && (
+              {backendStatus?.rpcOnline && (
                 <>
                   <span className="text-gray-600">|</span>
                   <div className="flex items-center gap-1">
@@ -157,11 +175,11 @@ export default function Home() {
                   <span className="text-gray-600">|</span>
                   <div className="flex items-center gap-1">
                     <span className="text-gray-400">Latency:</span>
-                    <span className="text-green-400 font-bold">{latency}ms</span>
+                    <span className="text-green-400 font-bold">{backendStatus?.latency || latency}ms</span>
                   </div>
                 </>
               )}
-              {!isConnected && (
+              {!backendStatus?.rpcOnline && (
                 <button
                   onClick={forceReconnect}
                   className="ml-2 px-2 py-1 bg-red-500/20 text-red-400 rounded text-[10px] hover:bg-red-500/30 border border-red-500/50"
