@@ -1,25 +1,22 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { useWallet } from "@solana/wallet-adapter-react"
-import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
 import { LiveTokenGrid } from "@/components/live-token-grid"
 import { PortfolioDock } from "@/components/portfolio-dock"
 import { BuyModal } from "@/components/buy-modal"
 import { useStablePumpSocket } from "@/hooks/use-stable-pump-socket"
 import { GodModeSidebar } from "@/components/god-mode-sidebar"
-import { SetupGuide } from "@/components/setup-guide"
+import { KillerMode } from "@/components/killer-mode"
 import { Badge } from "@/components/ui/badge"
 import type { EnrichedToken } from "@/lib/types"
-import { Zap, Activity, ToggleLeft, ToggleRight } from "lucide-react"
-import { useBotBrain } from "@/hooks/use-bot-brain" // Import useBotBrain
+import { Skull, Activity, ToggleLeft, ToggleRight } from "lucide-react"
+import { useBotBrain } from "@/hooks/use-bot-brain"
 import { usePumpStore } from "@/lib/store"
 
 export default function Home() {
   const { forceReconnect } = useStablePumpSocket()
-  useBotBrain()
+  const connected = false
 
-  const { connected } = useWallet()
   const {
     tokens,
     isConnected,
@@ -29,14 +26,14 @@ export default function Home() {
     simulateBuy,
     openPositions,
     logs,
-    wsStatus,
     latency,
     packetsReceived,
   } = usePumpStore()
+  useBotBrain()
 
   const [selectedToken, setSelectedToken] = useState<EnrichedToken | null>(null)
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false)
-  const [mainTab, setMainTab] = useState<"feed" | "logs" | "wallet">("feed")
+  const [mainTab, setMainTab] = useState<"dashboard" | "logs" | "killer">("dashboard")
 
   const handleBuyClick = useCallback((token: EnrichedToken) => {
     setSelectedToken(token)
@@ -68,49 +65,39 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      {/* Header with Wallet Button */}
-      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-        <div className="flex h-14 items-center justify-between px-4">
+      <header className="sticky top-0 z-50 border-b border-red-500/30 bg-black backdrop-blur">
+        <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <Zap className="h-6 w-6 text-primary" />
-              <span className="font-mono text-lg font-bold text-primary">
-                GOD<span className="text-purple-400"> MODE</span>
-              </span>
-            </div>
-            <Badge variant={isConnected ? "default" : "secondary"} className="font-mono text-xs">
-              <Activity className={`mr-1 h-3 w-3 ${isConnected ? "animate-pulse" : ""}`} />
-              {isConnected ? "LIVE FEED" : "OFFLINE"}
-            </Badge>
+            <Skull className="h-8 w-8 text-red-500 animate-pulse" />
+            <span className="font-mono text-2xl font-bold">
+              <span className="text-red-500">PumpKing</span>
+              <span className="text-purple-400"> Killer</span>
+            </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Setup Guide Button */}
-            <SetupGuide />
-
-            {/* Sim/Live Mode Toggle */}
+          <div className="flex items-center gap-6">
             <button
               onClick={toggleLiveMode}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-mono text-xs font-bold border transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-sm font-bold border-2 transition-all ${
                 isLiveMode
-                  ? "bg-red-500/20 text-red-400 border-red-500/50"
+                  ? "bg-red-500/20 text-red-400 border-red-500/50 animate-pulse"
                   : "bg-green-500/20 text-green-400 border-green-500/50"
               }`}
             >
-              {isLiveMode ? <ToggleRight className="h-4 w-4" /> : <ToggleLeft className="h-4 w-4" />}
-              {isLiveMode ? "⚠️ LIVE TRADING" : "🧪 SIMULATOR"}
+              {isLiveMode ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+              {isLiveMode ? "LIVE MAINNET" : "SIMULATOR MODE"}
             </button>
 
-            {/* Balance Display */}
-            <div className="font-mono text-sm">
-              <span className="text-muted-foreground">BAL: </span>
-              <span className="text-primary font-bold">
-                {isLiveMode ? (connected ? "..." : "N/A") : `${simBalance.toFixed(2)} SOL`}
+            <div className="font-mono text-lg">
+              <span className="text-gray-400">Balance: </span>
+              <span className="text-green-400 font-bold">
+                {isLiveMode ? (connected ? "..." : "0.00") : `${simBalance.toFixed(2)}`} SOL
               </span>
             </div>
 
-            {/* Wallet Button */}
-            <WalletMultiButton className="!bg-primary !text-primary-foreground !font-mono !text-xs !h-9 !px-4 !rounded-lg" />
+            <button className="bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 border border-purple-500/50 font-mono text-sm h-10 px-6 rounded-lg transition-all">
+              {connected ? "Wallet Connected" : "Connect Wallet"}
+            </button>
           </div>
         </div>
       </header>
@@ -118,57 +105,59 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         <GodModeSidebar onReconnect={forceReconnect} />
 
-        <main className="flex-1 overflow-auto p-4 pb-52">
-          {/* Main tab navigation */}
-          <div className="mb-4 flex items-center gap-2 border-b border-border pb-2">
+        <main className="flex-1 overflow-auto p-6 pb-52">
+          <div className="mb-6 flex items-center gap-3 border-b border-red-500/30 pb-3">
             <button
-              onClick={() => setMainTab("feed")}
-              className={`px-4 py-2 rounded-t-lg font-mono text-xs font-bold transition-all ${
-                mainTab === "feed"
-                  ? "bg-primary/20 text-primary border-b-2 border-primary"
-                  : "text-muted-foreground hover:bg-secondary/50"
+              onClick={() => setMainTab("dashboard")}
+              className={`px-6 py-3 rounded-t-lg font-mono text-sm font-bold transition-all ${
+                mainTab === "dashboard"
+                  ? "bg-purple-600/20 text-purple-400 border-b-2 border-purple-500"
+                  : "text-gray-400 hover:bg-gray-800/50"
               }`}
             >
-              🔥 Live Token Feed
+              Dashboard
             </button>
             <button
               onClick={() => setMainTab("logs")}
-              className={`px-4 py-2 rounded-t-lg font-mono text-xs font-bold transition-all ${
+              className={`px-6 py-3 rounded-t-lg font-mono text-sm font-bold transition-all ${
                 mainTab === "logs"
-                  ? "bg-primary/20 text-primary border-b-2 border-primary"
-                  : "text-muted-foreground hover:bg-secondary/50"
+                  ? "bg-purple-600/20 text-purple-400 border-b-2 border-purple-500"
+                  : "text-gray-400 hover:bg-gray-800/50"
               }`}
             >
-              📜 System Logs
+              System Logs
             </button>
             <button
-              onClick={() => setMainTab("wallet")}
-              className={`px-4 py-2 rounded-t-lg font-mono text-xs font-bold transition-all ${
-                mainTab === "wallet"
-                  ? "bg-primary/20 text-primary border-b-2 border-primary"
-                  : "text-muted-foreground hover:bg-secondary/50"
+              onClick={() => setMainTab("killer")}
+              className={`px-6 py-3 rounded-t-lg font-mono text-sm font-bold transition-all flex items-center gap-2 ${
+                mainTab === "killer"
+                  ? "bg-red-500/20 text-red-400 border-b-2 border-red-500 animate-pulse"
+                  : "text-red-400/60 hover:bg-red-500/10 animate-pulse"
               }`}
             >
-              💼 My Wallet
+              <Skull className="h-4 w-4" />
+              KILLER MODE
             </button>
 
-            <div className="ml-auto flex items-center gap-3 px-4 py-1.5 rounded-full bg-secondary/50 border border-border font-mono text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+            <div className="ml-auto flex items-center gap-3 px-4 py-2 rounded-full bg-black border border-green-500/30 font-mono text-xs">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+                />
                 <span className={isConnected ? "text-green-400" : "text-red-400"}>
-                  {isConnected ? "ONLINE" : "OFFLINE"}
+                  {isConnected ? "RPC ONLINE" : "OFFLINE"}
                 </span>
               </div>
               {isConnected && (
                 <>
-                  <span className="text-muted-foreground">|</span>
+                  <span className="text-gray-600">|</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground">📦</span>
-                    <span className="text-primary font-bold">{packetsReceived.toLocaleString()}</span>
+                    <span className="text-gray-400">Packets:</span>
+                    <span className="text-green-400 font-bold">{packetsReceived.toLocaleString()}</span>
                   </div>
-                  <span className="text-muted-foreground">|</span>
+                  <span className="text-gray-600">|</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-muted-foreground">📶</span>
+                    <span className="text-gray-400">Latency:</span>
                     <span className="text-green-400 font-bold">{latency}ms</span>
                   </div>
                 </>
@@ -176,7 +165,7 @@ export default function Home() {
               {!isConnected && (
                 <button
                   onClick={forceReconnect}
-                  className="ml-2 px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] hover:bg-red-500/30"
+                  className="ml-2 px-2 py-1 bg-red-500/20 text-red-400 rounded text-[10px] hover:bg-red-500/30 border border-red-500/50"
                 >
                   RECONNECT
                 </button>
@@ -184,11 +173,14 @@ export default function Home() {
             </div>
           </div>
 
-          {mainTab === "feed" && (
+          {mainTab === "dashboard" && (
             <>
               <div className="mb-4 flex items-center justify-between">
-                <h1 className="font-mono text-xl font-bold text-foreground">Live Token Feed</h1>
-                <span className="font-mono text-sm text-muted-foreground">{tokens.length} tokens streaming</span>
+                <h1 className="font-mono text-2xl font-bold text-purple-400">Live Token Feed</h1>
+                <Badge variant="default" className="font-mono">
+                  <Activity className={`mr-1 h-3 w-3 ${isConnected ? "animate-pulse" : ""}`} />
+                  {tokens.length} tokens streaming
+                </Badge>
               </div>
               <LiveTokenGrid onBuyClick={handleBuyClick} />
             </>
@@ -197,17 +189,17 @@ export default function Home() {
           {mainTab === "logs" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h1 className="font-mono text-xl font-bold text-foreground">Master System Logs</h1>
+                <h1 className="font-mono text-2xl font-bold text-purple-400">Master System Logs</h1>
                 <button
                   onClick={() => usePumpStore.getState().clearLogs()}
-                  className="font-mono text-xs text-muted-foreground hover:text-primary"
+                  className="font-mono text-xs text-gray-400 hover:text-purple-400 px-3 py-1 border border-gray-700 rounded hover:border-purple-500/50"
                 >
                   Clear Logs
                 </button>
               </div>
               <div className="h-[calc(100vh-250px)] rounded-lg bg-black border border-green-500/30 p-4 overflow-auto font-mono text-xs">
                 {logs.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">No logs yet. System is idle.</div>
+                  <div className="text-center text-gray-500 py-8">No logs yet. System is idle.</div>
                 ) : (
                   <div className="space-y-1">
                     {logs
@@ -226,90 +218,19 @@ export default function Home() {
             </div>
           )}
 
-          {mainTab === "wallet" && (
-            <div className="space-y-4">
-              <h1 className="font-mono text-xl font-bold text-foreground">My Wallet</h1>
-
-              {/* SOL Balance */}
-              <div className="p-6 rounded-lg bg-gradient-to-br from-green-500/10 to-blue-500/10 border border-green-500/30">
-                <div className="text-xs text-muted-foreground mb-2">Total Balance</div>
-                <div className="font-mono text-4xl font-bold text-green-400">
-                  {isLiveMode ? (connected ? "..." : "0.00") : simBalance.toFixed(4)} SOL
+          {mainTab === "killer" && (
+            <div>
+              <div className="mb-6 flex items-center gap-4">
+                <Skull className="h-10 w-10 text-red-400 animate-pulse" />
+                <div>
+                  <h1 className="font-mono text-3xl font-bold text-red-400">KILLER MODE COCKPIT</h1>
+                  <p className="text-sm text-gray-400 font-mono">Extreme Risk - Block-0 Sniper Terminal</p>
                 </div>
-                <div className="text-xs text-muted-foreground mt-2">
-                  ≈ ${isLiveMode ? (connected ? "..." : "0") : (simBalance * 175).toFixed(2)} USD
-                </div>
+                <Badge variant="destructive" className="font-mono text-xs animate-pulse">
+                  DANGEROUS ZONE
+                </Badge>
               </div>
-
-              {/* Active Positions */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-mono text-sm font-bold">Active Positions ({openPositions.length})</h2>
-                  {openPositions.length > 0 && (
-                    <button
-                      onClick={handlePanicSell}
-                      className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/50 rounded font-mono text-xs hover:bg-red-500/30"
-                    >
-                      🚨 Panic Sell All
-                    </button>
-                  )}
-                </div>
-
-                {openPositions.length === 0 ? (
-                  <div className="p-8 rounded-lg bg-secondary/50 border border-border text-center text-muted-foreground text-xs">
-                    No active positions. Start trading to see your holdings here.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {openPositions.map((position) => (
-                      <div
-                        key={position.id}
-                        className="p-4 rounded-lg bg-card border border-border hover:border-primary/50 transition-all"
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <div className="font-mono text-sm font-bold">{position.token.symbol}</div>
-                            <div className="text-xs text-muted-foreground">{position.token.name}</div>
-                          </div>
-                          <div className="text-right">
-                            <div
-                              className={`font-mono text-lg font-bold ${position.pnlPercent >= 0 ? "text-green-400" : "text-red-400"}`}
-                            >
-                              {position.pnlPercent >= 0 ? "+" : ""}
-                              {position.pnlPercent.toFixed(1)}%
-                            </div>
-                            <div className={`text-xs ${position.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                              {position.pnl >= 0 ? "+" : ""}
-                              {position.pnl.toFixed(4)} SOL
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-xs">
-                          <div>
-                            <div className="text-muted-foreground">Entry</div>
-                            <div className="font-mono">{position.entryPrice.toFixed(6)}</div>
-                          </div>
-                          <div>
-                            <div className="text-muted-foreground">Current</div>
-                            <div className="font-mono">{position.currentPrice.toFixed(6)}</div>
-                          </div>
-                          <div>
-                            <div className="text-muted-foreground">Amount</div>
-                            <div className="font-mono">{position.amount.toFixed(0)}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Refresh Balance Button */}
-              {isLiveMode && connected && (
-                <button className="w-full py-3 rounded-lg bg-primary/20 text-primary border border-primary/50 font-mono text-sm hover:bg-primary/30">
-                  🔄 Refresh Balance
-                </button>
-              )}
+              <KillerMode />
             </div>
           )}
         </main>

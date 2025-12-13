@@ -7,6 +7,7 @@ import type {
   ManualSettings,
   TrackedWallet,
   AutoWithdrawalSettings,
+  KillerModeSettings,
 } from "@/lib/types"
 
 interface PumpStore {
@@ -17,6 +18,7 @@ interface PumpStore {
   botConfigs: BotConfigs
   manualSettings: ManualSettings
   autoWithdrawal: AutoWithdrawalSettings
+  killerMode: KillerModeSettings // Added killerMode settings
 
   // Positions and tokens
   openPositions: Position[]
@@ -64,6 +66,7 @@ interface PumpStore {
   addTrackedWallet: (wallet: Omit<TrackedWallet, "id" | "addedAt">) => void
   removeTrackedWallet: (id: string) => void
   toggleWalletStatus: (id: string) => void
+  updateKillerMode: (settings: Partial<KillerModeSettings>) => void // Added updateKillerMode action
 }
 
 const DEFAULT_BOT_CONFIGS: BotConfigs = {
@@ -121,12 +124,21 @@ const DEFAULT_AUTO_WITHDRAWAL: AutoWithdrawalSettings = {
   reserveAmount: 0.5,
 }
 
+const DEFAULT_KILLER_MODE: KillerModeSettings = {
+  buyAmountSol: 0.1,
+  jitoBribe: 0.01,
+  maxDevBuy: 20,
+  antiRug: true,
+  aiRugDefense: false,
+}
+
 export const usePumpStore = create<PumpStore>((set, get) => ({
   isLiveMode: false,
   simBalance: 100,
   botConfigs: DEFAULT_BOT_CONFIGS,
   manualSettings: DEFAULT_MANUAL_SETTINGS,
   autoWithdrawal: DEFAULT_AUTO_WITHDRAWAL,
+  killerMode: DEFAULT_KILLER_MODE, // Added killerMode default settings
   openPositions: [],
   tokens: [],
   latestToken: null,
@@ -408,5 +420,10 @@ export const usePumpStore = create<PumpStore>((set, get) => ({
       trackedWallets: state.trackedWallets.map((w) =>
         w.id === id ? { ...w, status: w.status === "ACTIVE" ? "PAUSED" : "ACTIVE" } : w,
       ),
+    })),
+
+  updateKillerMode: (settings) =>
+    set((state) => ({
+      killerMode: { ...state.killerMode, ...settings },
     })),
 }))

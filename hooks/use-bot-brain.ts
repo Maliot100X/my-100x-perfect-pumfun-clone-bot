@@ -1,15 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useCallback } from "react"
-import { useWallet, useConnection } from "@solana/wallet-adapter-react"
-import { VersionedTransaction, TransactionMessage, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"
 import { usePumpStore } from "@/lib/store"
 import type { EnrichedToken } from "@/lib/types"
 
 export function useBotBrain() {
   const processedTokensRef = useRef<Set<string>>(new Set())
-  const { publicKey, sendTransaction } = useWallet()
-  const { connection } = useConnection()
 
   const {
     latestToken,
@@ -27,7 +23,7 @@ export function useBotBrain() {
   } = usePumpStore()
 
   // ==================================================
-  // HANDLE BUY - Sim mode vs Live mode with real tx
+  // HANDLE BUY - Sim mode only for now
   // ==================================================
   const handleBuy = useCallback(
     async (token: EnrichedToken, solAmount: number, source: string) => {
@@ -35,40 +31,11 @@ export function useBotBrain() {
         return simulateBuy(token, solAmount, source)
       }
 
-      // LIVE MODE - Real transaction boilerplate
-      if (!publicKey) {
-        addLog("ERROR", "Wallet not connected for live trading")
-        return false
-      }
-
-      try {
-        addLog(source, `Preparing LIVE buy for $${token.symbol}...`)
-
-        const { blockhash } = await connection.getLatestBlockhash()
-
-        const messageV0 = new TransactionMessage({
-          payerKey: publicKey,
-          recentBlockhash: blockhash,
-          instructions: [
-            SystemProgram.transfer({
-              fromPubkey: publicKey,
-              toPubkey: new PublicKey(token.bondingCurveKey),
-              lamports: solAmount * LAMPORTS_PER_SOL,
-            }),
-          ],
-        }).compileToV0Message()
-
-        const transaction = new VersionedTransaction(messageV0)
-        const signature = await sendTransaction(transaction, connection)
-
-        addLog(source, `LIVE TX sent: ${signature.slice(0, 8)}...`)
-        return true
-      } catch (err) {
-        addLog("ERROR", `Live buy failed: ${err instanceof Error ? err.message : "Unknown error"}`)
-        return false
-      }
+      // LIVE MODE - Would require real Solana wallet integration
+      addLog("ERROR", "Live trading requires Solana wallet setup. Use simulator mode.")
+      return false
     },
-    [isLiveMode, publicKey, connection, sendTransaction, simulateBuy, addLog],
+    [isLiveMode, simulateBuy, addLog],
   )
 
   // ==================================================
@@ -150,9 +117,7 @@ export function useBotBrain() {
       openPositions.forEach((position) => {
         const holdTime = now - position.entryTime
 
-        // Check time limit exceeded
         const timeExceeded = holdTime > timeLimitMs
-        // Check holder count (simulated via topHolderPercent)
         const lowHolders = position.token.topHolderPercent > 100 / minHolders
 
         if (timeExceeded && lowHolders) {

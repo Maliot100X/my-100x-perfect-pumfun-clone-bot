@@ -87,6 +87,32 @@ export interface BotConfigs {
     takeProfit: number // % (default: 15)
     stopLoss: number // % (default: 10)
   }
+  sniper: SniperSettings
+}
+
+export interface SniperSettings {
+  rpcUrl: string
+  privateKey: string
+  jitoTipAmount: number // 0.01, 0.1, or 1.0
+  maxDevBuyPercent: number // e.g. 20
+  buyAmountSol: number // The amount of SOL to snipe
+  takeProfitPercent: number // e.g., 100
+  stopLossPercent: number // e.g., 50
+  autoSnipeActive: boolean
+  aiRugDetectorActive: boolean
+}
+
+export interface ActivePosition {
+  id: number
+  mint: string
+  symbol: string
+  entrySol: number
+  timeBought: number // For PNL simulation
+  entryPrice: number
+  currentPrice: number
+  amountHeld: number
+  pnlPercent: number
+  status: "OPEN" | "SELLING" | "CLOSED"
 }
 
 export interface ManualSettings {
@@ -131,4 +157,10 @@ export interface AutoWithdrawalSettings {
   safeWallet: string
   triggerBalance: number // SOL
   reserveAmount: number // SOL
+}
+
+export interface LogEntry {
+  timestamp: string
+  message: string
+  type: "INFO" | "SUCCESS" | "ERROR" | "DANGER"
 }
